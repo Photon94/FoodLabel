@@ -6,6 +6,30 @@ Native offline Mac app for Xprinter XP-365B nutrition labels. Russian interface.
 
 Download the DMG from [GitHub Releases](https://github.com/Photon94/FoodLabel/releases/latest), open it, and drag **FoodLabel** into **Applications**. Quit an older version before replacing it. Updating the app preserves the database. Release notes state the signing and Apple notarization status of each download.
 
+## Screenshots
+
+**Label editor and live preview** — enter nutrition per 100 g, choose the portion weight, and preview the exact printed label.
+
+![FoodLabel editor with nutrition per 100 g and a live 58 × 30 mm label preview](docs/screenshots/label-editor.png)
+
+<details>
+<summary>Per-portion nutrition input</summary>
+
+Enter the values for a portion to calculate the corresponding values per 100 g. Switching the input basis converts the current values.
+
+![FoodLabel with per-portion input selected and converted nutrition values](docs/screenshots/portion-calculation.png)
+
+</details>
+
+<details>
+<summary>Local print history</summary>
+
+Review past jobs, their label images, copy counts, dates, and USB transfer results. Open a previous label for explicit reprinting.
+
+![FoodLabel local print history showing saved label images and transfer results](docs/screenshots/print-history.png)
+
+</details>
+
 ## Use
 
 1. Open FoodLabel.app. You can move it to Applications.
