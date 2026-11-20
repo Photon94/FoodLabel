@@ -1,0 +1,14 @@
+FoodLabel — macOS 15+ / Apple Silicon
+
+Перетащите FoodLabel.app в Applications, затем откройте FoodLabel из папки «Программы».
+Подключите Xprinter XP-365B по USB. Размер этикетки: 58 × 30 мм.
+История печати и блюда сохраняются только на вашем Mac.
+
+Drag FoodLabel.app into Applications, then launch FoodLabel from Applications.
+Connect your Xprinter XP-365B by USB and load 58 × 30 mm labels.
+Saved foods and print history stay on this Mac.
+
+Updates preserve the database in ~/Library/Application Support/FoodLabel/.
+Quit FoodLabel before replacing an older version. Use the in-app backup button first.
+
+Signing and notarization status is stated in the GitHub release notes.

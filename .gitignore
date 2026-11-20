@@ -1,0 +1,12 @@
+build/
+dist/
+.DS_Store
+*.dmg
+*.app/
+*.sqlite*
+*.p12
+*.p8
+.env
+.env.*
+docs/plan.md
+docs/progress.md

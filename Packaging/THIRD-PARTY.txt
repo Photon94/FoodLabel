@@ -1,0 +1,6 @@
+FoodLabel uses libusb 1.0.29, dynamically linked under the GNU LGPL 2.1 or later.
+The license is included in libusb-COPYING.txt.
+Upstream source: https://github.com/libusb/libusb/releases/tag/v1.0.29
+This local build bundles the Homebrew arm64 library, with only its install name changed.
+FoodLabel source and rebuild instructions are supplied alongside the app. You may replace
+Contents/Frameworks/libusb-1.0.0.dylib with a compatible library and locally re-sign the app.
