@@ -10,14 +10,14 @@ Download the DMG from [GitHub Releases](https://github.com/Photon94/FoodLabel/re
 
 **Label editor and live preview** — enter nutrition per 100 g, choose the portion weight, and preview the exact printed label.
 
-![FoodLabel editor with nutrition per 100 g and a live 58 × 30 mm label preview](docs/screenshots/label-editor.png)
+![FoodLabel editor with nutrition per 100 g and a live 58 × 30 mm label preview](docs/screenshots/label-editor.jpg)
 
 <details>
 <summary>Per-portion nutrition input</summary>
 
 Enter the values for a portion to calculate the corresponding values per 100 g. Switching the input basis converts the current values.
 
-![FoodLabel with per-portion input selected and converted nutrition values](docs/screenshots/portion-calculation.png)
+![FoodLabel with per-portion input selected and converted nutrition values](docs/screenshots/portion-calculation.jpg)
 
 </details>
 
@@ -26,7 +26,7 @@ Enter the values for a portion to calculate the corresponding values per 100 g. 
 
 Review past jobs, their label images, copy counts, dates, and USB transfer results. Open a previous label for explicit reprinting.
 
-![FoodLabel local print history showing saved label images and transfer results](docs/screenshots/print-history.png)
+![FoodLabel local print history showing saved label images and transfer results](docs/screenshots/print-history.jpg)
 
 </details>
 
