@@ -32,7 +32,7 @@ enum Numbers {
 }
 struct ValidFood {
     let name: String; let grams: Decimal; let per100: Nutrients; let perPortion: Nutrients
-    let date: Date; let timeZone: TimeZone; let barcode: String; let copies: Int
+    let date: Date; let timeZone: TimeZone; let barcode: String; let copies: Int; let qrLink: String?
 }
 struct FoodDraft: Codable, Equatable {
     var name = ""
@@ -44,6 +44,7 @@ struct FoodDraft: Codable, Equatable {
     var labelTimeZone: TimeZone { dateTimeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current }
     var barcode = "250001"
     var copies = "1"
+    var qrLink: String?
     static var example: FoodDraft {
         var d = FoodDraft(); d.name = "Шаурма ленивая"; d.kcal = "123"; d.protein = "12,3"; d.fat = "3,4"; d.carbs = "11"; return d
     }
@@ -78,7 +79,24 @@ struct FoodDraft: Codable, Equatable {
         guard let count = Int(copies), (1...100).contains(count), copies.allSatisfy({ $0.isASCII && $0.isNumber }) else {
             throw FoodError.invalid("Количество этикеток: целое число от 1 до 100.")
         }
-        return ValidFood(name: name, grams: grams, per100: per100, perPortion: perPortion, date: date, timeZone: labelTimeZone, barcode: barcode, copies: count)
+        let link=try validatedQRLink()
+        return ValidFood(name: name, grams: grams, per100: per100, perPortion: perPortion, date: date, timeZone: labelTimeZone, barcode: barcode, copies: count, qrLink: link)
+    }
+    private func validatedQRLink() throws -> String? {
+        let text=(qrLink ?? "").trimmingCharacters(in:.whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        guard text.utf8.count <= 1024,
+              !text.unicodeScalars.contains(where:{CharacterSet.whitespacesAndNewlines.union(.controlCharacters).contains($0)}),
+              let parts=URLComponents(string:text), let scheme=parts.scheme?.lowercased(),
+              !["javascript","data","file","vbscript"].contains(scheme),
+              parts.url != nil,
+              !(parts.host ?? "").isEmpty || !parts.path.isEmpty || !(parts.query ?? "").isEmpty || !(parts.fragment ?? "").isEmpty else {
+            throw FoodError.invalid("Вставьте полную ссылку на блюдо, например https://… или ссылку из приложения. Пробелы внутри ссылки недопустимы.")
+        }
+        if ["http","https"].contains(scheme) && (parts.host ?? "").isEmpty {
+            throw FoodError.invalid("В веб-ссылке на блюдо должен быть адрес сайта после https://.")
+        }
+        return text
     }
     mutating func switchBasis(to newBasis: NutritionBasis) throws {
         guard newBasis != basis else { return }

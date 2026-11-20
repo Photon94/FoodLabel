@@ -100,6 +100,19 @@ struct ContentView: View {
                             field("Внутренний штрихкод",text:$model.draft.barcode,placeholder:"6 цифр")
                             Button { model.generateBarcode() } label: { Image(systemName:"arrow.clockwise") }.help("Создать новый внутренний код").padding(.bottom,2)
                         }
+                        VStack(alignment:.leading,spacing:8) {
+                            field("Ссылка на блюдо (QR)",text:Binding(get:{model.draft.qrLink ?? ""},set:{model.draft.qrLink=$0}),placeholder:"Вставьте ссылку из приложения")
+                            HStack {
+                                Button("Вставить") {
+                                    if let link=NSPasteboard.general.string(forType:.string) { model.draft.qrLink=link }
+                                }.help("Вставить ссылку из буфера обмена")
+                                if !(model.draft.qrLink ?? "").isEmpty {
+                                    Button("Убрать QR") { model.draft.qrLink=nil }
+                                }
+                            }
+                            Text("Необязательно. QR откроет ссылку на блюдо; на телефоне может понадобиться соответствующее приложение.")
+                                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
+                        }
                     }
                     HStack {
                         Button(model.selectedFood == nil ? "Сохранить блюдо" : "Сохранить изменения") { model.saveFood() }.disabled(model.validFood == nil).keyboardShortcut("s")

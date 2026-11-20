@@ -60,15 +60,16 @@ enum LabelRenderer {
         let date = DateFormatter(); date.locale = Locale(identifier: "ru_RU"); date.timeZone = food.timeZone; date.dateFormat = "dd.MM.yyyy"
         try text(date.string(from: food.date),x: 448,top: 42,size: 17,maxWidth: 170,align: 2)
         rect(16,68,432,1)
-        let centers: [CGFloat] = [171,268,345,420]
+        let compact=food.qrLink != nil
+        let centers: [CGFloat] = compact ? [105,155,205,255] : [171,268,345,420]
         for (i,label) in ["ккал","Б, г","Ж, г","У, г"].enumerated() {
-            try text(label,x: centers[i],top: 73,size: 15,maxWidth: 75,align: 1)
+            try text(label,x: centers[i],top: 73,size: compact ? 12 : 15,maxWidth: compact ? 48 : 75,align: 1,minSize: compact ? 11 : 13)
         }
         for (row,values) in [food.per100.values,food.perPortion.values].enumerated() {
             let y: CGFloat = row == 0 ? 97 : 128
-            try text(row == 0 ? "100 г" : "\(Numbers.display(food.grams)) г",x: 16,top: y,size: 21,maxWidth: 102,bold: row == 1)
+            try text(row == 0 ? "100 г" : "\(Numbers.display(food.grams)) г",x: 16,top: y,size: compact ? 16 : 21,maxWidth: compact ? 62 : 102,bold: row == 1)
             for (i,v) in values.enumerated() {
-                try text(Numbers.display(v),x: centers[i],top: y,size: 23,maxWidth: i == 0 ? 96 : 74,bold: row == 1,align: 1)
+                try text(Numbers.display(v),x: centers[i],top: y,size: compact ? 17 : 23,maxWidth: compact ? 48 : (i == 0 ? 96 : 74),bold: row == 1,align: 1)
             }
         }
         let filter = CIFilter.code128BarcodeGenerator(); filter.message = Data(food.barcode.utf8); filter.quietSpace = 10
@@ -76,15 +77,41 @@ enum LabelRenderer {
         let ci = CIContext(options: [.useSoftwareRenderer: true])
         guard let codeImage = ci.createCGImage(code, from: code.extent) else { throw FoodError.invalid("Не удалось отрисовать штрихкод.") }
         let codeRep = NSBitmapImageRep(cgImage: codeImage)
-        let module = min(3, 420/codeRep.pixelsWide)
+        let barcodeWidth=compact ? 256 : 420
+        let module = min(3, barcodeWidth/codeRep.pixelsWide)
         guard module >= 2 else { throw FoodError.invalid("Штрихкод слишком широкий.") }
-        let start = (width-codeRep.pixelsWide*module)/2
+        let start = compact ? 16+(barcodeWidth-codeRep.pixelsWide*module)/2 : (width-codeRep.pixelsWide*module)/2
         for x in 0..<codeRep.pixelsWide {
             if let c = codeRep.colorAt(x: x,y: codeRep.pixelsHigh/2)?.usingColorSpace(.deviceGray), c.whiteComponent < 0.5 {
                 rect(start+x*module,166,module,43)
             }
         }
-        try text(food.barcode,x: 232,top: 215,size: 15,maxWidth: 180,align: 1)
+        try text(food.barcode,x: compact ? 144 : 232,top: 215,size: 15,maxWidth: 180,align: 1)
+        if let link=food.qrLink {
+            let qr=CIFilter.qrCodeGenerator(); qr.message=Data(link.utf8); qr.correctionLevel="M"
+            guard let output=qr.outputImage, let generated=ci.createCGImage(output,from:output.extent) else {
+                throw FoodError.invalid("Не удалось создать QR-код для ссылки.")
+            }
+            let bitmap=NSBitmapImageRep(cgImage:generated)
+            func black(_ x:Int,_ y:Int) -> Bool {
+                (bitmap.colorAt(x:x,y:y)?.usingColorSpace(.deviceGray)?.whiteComponent ?? 1) < 0.5
+            }
+            // Strip Core Image's own border, then add exactly four quiet modules.
+            var left=bitmap.pixelsWide, top=bitmap.pixelsHigh, right=0, bottom=0
+            for y in 0..<bitmap.pixelsHigh { for x in 0..<bitmap.pixelsWide where black(x,y) {
+                left=min(left,x); top=min(top,y); right=max(right,x); bottom=max(bottom,y)
+            } }
+            let modules=right-left+1, quiet=4, side=160
+            guard modules > 0, modules == bottom-top+1 else { throw FoodError.invalid("Не удалось отрисовать QR-код.") }
+            let scale=side/(modules+quiet*2)
+            guard scale >= 3 else {
+                throw FoodError.invalid("Ссылка слишком длинная для читаемого QR на этикетке 58 × 30 мм. Вставьте более короткую ссылку из приложения.")
+            }
+            let padding=(side-(modules+quiet*2)*scale)/2+quiet*scale
+            for y in 0..<modules { for x in 0..<modules where black(left+x,top+y) {
+                rect(288+padding+x*scale,74+padding+y*scale,scale,scale)
+            } }
+        }
         graphics.flushGraphics()
         guard let bytes = rep.bitmapData else { throw FoodError.invalid("Нет растровых данных.") }
         let pixels = (0..<(width*height)).map { bytes[$0] < 170 ? UInt8(0) : UInt8(255) }

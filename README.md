@@ -38,6 +38,14 @@ Review past jobs, their label images, copy counts, dates, and USB transfer resul
 4. Check the preview and date, choose 1–100 copies, then press **Напечатать этикетки**.
 5. **Сохранить блюдо** saves a reusable food. **История печати** retains each attempted job automatically, even when the food was not saved.
 
+### QR dish links
+
+Paste a dish link copied from another app into **Ссылка на блюдо (QR)**, or use **Вставить** to paste from the clipboard. FoodLabel adds a QR code on the right and keeps both nutrition rows and the barcode in a compact layout. Web URLs and app-specific deep links are supported. The receiving phone needs an app that supports the link.
+
+The link is saved with the food and each print snapshot. **Убрать QR** returns to the original layout. Older saved foods and print history remain readable. Long links that would make the QR too dense for the label are rejected; use the source app's shorter sharing link. FoodLabel never follows, truncates, or uploads the URL. See [QR layout details](docs/qr-links.md).
+
+![FoodLabel QR dish link field and compact nutrition label with both QR and barcode](docs/screenshots/qr-dish-link.jpg)
+
 Comma or dot decimals are accepted. Portion weight supports one decimal place (0.1–10,000 g). Nutrition is calculated with Decimal and displayed to one decimal place. Calories are taken from your input, not inferred from macronutrients. Six-digit Code 128 barcodes are internal identifiers, not registered retail product codes.
 
 ## Local database
