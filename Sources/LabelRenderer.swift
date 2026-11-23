@@ -33,7 +33,13 @@ struct LabelRaster {
 }
 enum LabelRenderer {
     static let width = 464, height = 240
-    static func render(_ food: ValidFood) throws -> LabelRaster {
+    static func render(_ food: ValidFood, profile: PrinterProfile = .xprinter) throws -> LabelRaster {
+        let width = profile == .niimbot ? 592 : Self.width
+        let height = profile == .niimbot ? 354 : Self.height
+        let contentTop = profile == .niimbot ? 16 : 0
+        let sx = CGFloat(width)/464, sy = CGFloat(height-contentTop)/240
+        let fontScale: CGFloat = profile == .niimbot ? 1.4 : 1
+
         guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height,
                 bitsPerSample: 8, samplesPerPixel: 1, hasAlpha: false, isPlanar: false,
                 colorSpaceName: .deviceWhite, bytesPerRow: width, bitsPerPixel: 8),
@@ -41,9 +47,13 @@ enum LabelRenderer {
         NSGraphicsContext.saveGraphicsState(); NSGraphicsContext.current = graphics
         defer { NSGraphicsContext.restoreGraphicsState() }
         NSColor.white.setFill(); NSRect(x: 0,y: 0,width: width,height: height).fill()
-        func rect(_ x: Int,_ y: Int,_ w: Int,_ h: Int) { NSColor.black.setFill(); NSRect(x: x,y: height-y-h,width: w,height: h).fill() }
+        func pixelRect(_ x: Int,_ y: Int,_ w: Int,_ h: Int) { NSColor.black.setFill(); NSRect(x: x,y: height-contentTop-y-h,width: w,height: h).fill() }
+        func rect(_ x: Int,_ y: Int,_ w: Int,_ h: Int) {
+            pixelRect(Int((CGFloat(x)*sx).rounded()),Int((CGFloat(y)*sy).rounded()),Int((CGFloat(w)*sx).rounded()),max(1,Int((CGFloat(h)*sy).rounded())))
+        }
         func text(_ s: String, x: CGFloat, top: CGFloat, size: CGFloat, maxWidth: CGFloat, bold: Bool = false, align: Int = 0, minSize: CGFloat = 13) throws {
-            var pointSize = size
+            let x=x*sx, top=top*sy, maxWidth=maxWidth*sx, minSize=minSize*fontScale
+            var pointSize = size*fontScale
             func font(_ size: CGFloat) -> NSFont { NSFont(name: bold ? "Arial-BoldMT" : "ArialMT", size: size) ?? NSFont.systemFont(ofSize: size, weight: bold ? .bold : .regular) }
             var attributes: [NSAttributedString.Key: Any] = [.font: font(pointSize), .foregroundColor: NSColor.black]
             var extent = (s as NSString).size(withAttributes: attributes)
@@ -52,7 +62,7 @@ enum LabelRenderer {
             }
             guard extent.width <= maxWidth+0.5 else { throw FoodError.invalid("Текст слишком длинный для этикетки. Сократите название или проверьте значения.") }
             let left = align == 1 ? x-extent.width/2 : (align == 2 ? x-extent.width : x)
-            (s as NSString).draw(at: NSPoint(x: left.rounded(), y: CGFloat(height)-top-extent.height), withAttributes: attributes)
+            (s as NSString).draw(at: NSPoint(x: left.rounded(), y: CGFloat(height-contentTop)-top-extent.height), withAttributes: attributes)
         }
         // A fixed full-width title line avoids collisions with long names or large weights.
         try text(food.name,x: 16,top: 8,size: 28,maxWidth: 432,bold: true,minSize: 16)
@@ -77,13 +87,13 @@ enum LabelRenderer {
         let ci = CIContext(options: [.useSoftwareRenderer: true])
         guard let codeImage = ci.createCGImage(code, from: code.extent) else { throw FoodError.invalid("Не удалось отрисовать штрихкод.") }
         let codeRep = NSBitmapImageRep(cgImage: codeImage)
-        let barcodeWidth=compact ? 256 : 420
-        let module = min(3, barcodeWidth/codeRep.pixelsWide)
+        let barcodeWidth=Int(CGFloat(compact ? 256 : 420)*sx)
+        let module = min(profile == .niimbot ? 4 : 3, barcodeWidth/codeRep.pixelsWide)
         guard module >= 2 else { throw FoodError.invalid("Штрихкод слишком широкий.") }
-        let start = compact ? 16+(barcodeWidth-codeRep.pixelsWide*module)/2 : (width-codeRep.pixelsWide*module)/2
+        let start = compact ? Int(16*sx)+(barcodeWidth-codeRep.pixelsWide*module)/2 : (width-codeRep.pixelsWide*module)/2
         for x in 0..<codeRep.pixelsWide {
             if let c = codeRep.colorAt(x: x,y: codeRep.pixelsHigh/2)?.usingColorSpace(.deviceGray), c.whiteComponent < 0.5 {
-                rect(start+x*module,166,module,43)
+                pixelRect(start+x*module,Int(166*sy),module,Int(43*sy))
             }
         }
         try text(food.barcode,x: compact ? 144 : 232,top: 215,size: 15,maxWidth: 180,align: 1)
@@ -101,15 +111,15 @@ enum LabelRenderer {
             for y in 0..<bitmap.pixelsHigh { for x in 0..<bitmap.pixelsWide where black(x,y) {
                 left=min(left,x); top=min(top,y); right=max(right,x); bottom=max(bottom,y)
             } }
-            let modules=right-left+1, quiet=4, side=160
+            let modules=right-left+1, quiet=4, side=Int(160*sx)
             guard modules > 0, modules == bottom-top+1 else { throw FoodError.invalid("Не удалось отрисовать QR-код.") }
             let scale=side/(modules+quiet*2)
             guard scale >= 3 else {
-                throw FoodError.invalid("Ссылка слишком длинная для читаемого QR на этикетке 58 × 30 мм. Вставьте более короткую ссылку из приложения.")
+                throw FoodError.invalid("Ссылка слишком длинная для читаемого QR на этикетке \(profile.paper). Вставьте более короткую ссылку из приложения.")
             }
             let padding=(side-(modules+quiet*2)*scale)/2+quiet*scale
             for y in 0..<modules { for x in 0..<modules where black(left+x,top+y) {
-                rect(288+padding+x*scale,74+padding+y*scale,scale,scale)
+                pixelRect(Int(288*sx)+padding+x*scale,Int(74*sy)+(Int(160*sy)-side)/2+padding+y*scale,scale,scale)
             } }
         }
         graphics.flushGraphics()

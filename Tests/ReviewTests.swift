@@ -45,6 +45,13 @@ import AppKit
             model.refresh()
             return model.canPrint && model.validFood?.name == "Новая этикетка"
         }
+        check("changing printer via history clears stale status immediately") {
+            let model=AppModel(); model.draft.printerProfile = .niimbot; model.refresh()
+            model.printerConnected=true; model.printerMessage="NIIMBOT connected"
+            let record=PrintRecord(id:"test",draft:.example,created:Date(),status:"sent",detail:"",transferred:0,png:Data())
+            model.loadHistory(record)
+            return !model.printerConnected && model.printerMessage != "NIIMBOT connected"
+        }
         if failures > 0 { exit(1) }
     }
 }

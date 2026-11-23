@@ -4,3 +4,7 @@ Upstream source: https://github.com/libusb/libusb/releases/tag/v1.0.29
 This local build bundles the Homebrew arm64 library, with only its install name changed.
 FoodLabel source and rebuild instructions are supplied alongside the app. You may replace
 Contents/Frameworks/libusb-1.0.0.dylib with a compatible library and locally re-sign the app.
+
+NIIMBOT protocol reference: NiimBlueLib, https://github.com/MultiMote/niimbluelib
+Reference revision: 932be70 (MIT license). FoodLabel contains an independent Swift
+protocol implementation based on the documented packet formats and hardware checks.

@@ -4,6 +4,12 @@ enum FoodError: LocalizedError {
     case invalid(String)
     var errorDescription: String? { if case .invalid(let s) = self { return s }; return nil }
 }
+enum PrinterProfile: String, Codable, CaseIterable, Sendable {
+    case xprinter, niimbot
+    var title: String { self == .xprinter ? "Xprinter XP-365B" : "NIIMBOT B21 Pro" }
+    var paper: String { self == .xprinter ? "58 × 30 мм" : "50 × 30 мм" }
+    var aspectRatio: Double { self == .xprinter ? 58.0/30 : 50.0/30 }
+}
 enum NutritionBasis: String, Codable, CaseIterable { case per100, portion
     var title: String { self == .per100 ? "На 100 г" : "На порцию" }
 }
@@ -45,6 +51,8 @@ struct FoodDraft: Codable, Equatable {
     var barcode = "250001"
     var copies = "1"
     var qrLink: String?
+    var printerProfile: PrinterProfile?
+    var selectedPrinter: PrinterProfile { printerProfile ?? .xprinter }
     static var example: FoodDraft {
         var d = FoodDraft(); d.name = "Шаурма ленивая"; d.kcal = "123"; d.protein = "12,3"; d.fat = "3,4"; d.carbs = "11"; return d
     }

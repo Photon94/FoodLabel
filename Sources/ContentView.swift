@@ -132,11 +132,11 @@ struct ContentView: View {
     }
     private var previewColumn: some View {
         VStack(alignment:.leading,spacing:20) {
-            HStack { Text("Предпросмотр").font(.headline); Spacer(); Text("58 × 30 мм").font(.callout).foregroundStyle(.secondary) }
+            HStack { Text("Предпросмотр").font(.headline); Spacer(); Text(model.draft.selectedPrinter.paper).font(.callout).foregroundStyle(.secondary) }
             ZStack {
                 RoundedRectangle(cornerRadius:10).fill(Color(nsColor:.windowBackgroundColor))
                 if let raster=model.raster {
-                    Image(nsImage:raster.image).resizable().interpolation(.none).aspectRatio(58/30,contentMode:.fit)
+                    Image(nsImage:raster.image).resizable().interpolation(.none).aspectRatio(CGFloat(raster.width)/CGFloat(raster.height),contentMode:.fit)
                         .background(.white).padding(20).accessibilityLabel("Предпросмотр печатной этикетки")
                 } else {
                     VStack(spacing:10) { Image(systemName:"tag").font(.system(size:30)); Text("Заполните данные блюда").font(.headline) }.foregroundStyle(.secondary)
@@ -159,7 +159,9 @@ struct ContentView: View {
             VStack(alignment:.leading,spacing:12) {
                 HStack {
                     Image(systemName:"printer").foregroundStyle(model.printerConnected ? accent : .secondary)
-                    Text("Xprinter XP-365B").font(.headline)
+                    Picker("Принтер",selection:Binding(get:{model.draft.selectedPrinter},set:{model.selectPrinter($0)})) {
+                        ForEach(PrinterProfile.allCases,id:\.self) { Text($0.title).tag($0) }
+                    }.labelsHidden().disabled(model.busy || model.checking).accessibilityLabel("Принтер")
                     Spacer()
                     Button { Task { await model.checkPrinter() } } label: { if model.checking { ProgressView().controlSize(.small) } else { Image(systemName:"arrow.clockwise") } }.disabled(model.checking || model.busy).help("Проверить подключение")
                 }
@@ -202,7 +204,7 @@ struct ContentView: View {
                     if let selected=model.history.first(where:{$0.id == model.historySelection}) ?? model.history.first {
                         VStack(alignment:.leading,spacing:18) {
                             Text(selected.draft.name).font(.headline)
-                            if let image=NSImage(data:selected.png) { Image(nsImage:image).resizable().interpolation(.none).aspectRatio(58/30,contentMode:.fit).background(.white) }
+                            if let image=NSImage(data:selected.png) { Image(nsImage:image).resizable().interpolation(.none).aspectRatio(image.size.width/image.size.height,contentMode:.fit).background(.white) }
                             Text(selected.detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
                             Text("Передано: \(selected.transferred) байт").font(.caption).foregroundStyle(.secondary)
                             Text("«Отправлено» означает передачу по USB. Фактический выход этикеток проверяется на принтере.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
