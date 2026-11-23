@@ -14,7 +14,7 @@ USB_LINK=$(otool -L "$APP_PATH/Contents/MacOS/FoodLabel" | awk '/libusb-1.0.0.dy
 install_name_tool -change "$USB_LINK" '@rpath/libusb-1.0.0.dylib' "$APP_PATH/Contents/MacOS/FoodLabel"
 install_name_tool -id '@rpath/libusb-1.0.0.dylib' "$APP_PATH/Contents/Frameworks/libusb-1.0.0.dylib"
 cp Packaging/Info.plist "$APP_PATH/Contents/"
-cp Packaging/THIRD-PARTY.txt Packaging/libusb-COPYING.txt "$APP_PATH/Contents/Resources/"
+cp Packaging/THIRD-PARTY.txt Packaging/libusb-COPYING.txt Packaging/sqids-LICENSE.txt "$APP_PATH/Contents/Resources/"
 swiftc -module-cache-path build/module-cache Packaging/Icon.swift -o build/make-icon
 build/make-icon
 iconutil -c icns build/AppIcon.iconset -o "$APP_PATH/Contents/Resources/AppIcon.icns"

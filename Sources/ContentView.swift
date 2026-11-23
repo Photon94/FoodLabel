@@ -101,15 +101,23 @@ struct ContentView: View {
                             Button { model.generateBarcode() } label: { Image(systemName:"arrow.clockwise") }.help("Создать новый внутренний код").padding(.bottom,2)
                         }
                         VStack(alignment:.leading,spacing:8) {
-                            field("Ссылка на блюдо (QR)",text:Binding(get:{model.draft.qrLink ?? ""},set:{model.draft.qrLink=$0}),placeholder:"Вставьте ссылку из приложения")
+                            field("Ссылка на блюдо (QR)",text:Binding(get:{model.draft.qrLink ?? ""},set:{model.setRecipeLink($0)}),placeholder:"Ссылка или сообщение «Делюсь рецептом…»")
                             HStack {
                                 Button("Вставить") {
-                                    if let link=NSPasteboard.general.string(forType:.string) { model.draft.qrLink=link }
+                                    if let link=NSPasteboard.general.string(forType:.string) { model.setRecipeLink(link) }
                                 }.help("Вставить ссылку из буфера обмена")
                                 if !(model.draft.qrLink ?? "").isEmpty {
-                                    Button("Убрать QR") { model.draft.qrLink=nil }
+                                    Button("Убрать QR") { model.setRecipeLink("") }
                                 }
                             }
+                            if model.importingRecipe {
+                                HStack(spacing:8) { ProgressView().controlSize(.small); Text(model.recipeImportMessage).font(.caption) }
+                            } else if !model.recipeImportMessage.isEmpty {
+                                Text(model.recipeImportMessage).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
+                            }
+                            if model.canRetryRecipe { Button("Повторить загрузку") { model.retryRecipeImport() }.controlSize(.small) }
+                            Text("Сообщение из «Худеем вместе» автоматически заполнит название и КБЖУ. Другие ссылки добавят только QR.")
+                                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
                             Text("Необязательно. QR откроет ссылку на блюдо; на телефоне может понадобиться соответствующее приложение.")
                                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
                         }

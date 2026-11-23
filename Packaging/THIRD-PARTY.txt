@@ -8,3 +8,7 @@ Contents/Frameworks/libusb-1.0.0.dylib with a compatible library and locally re-
 NIIMBOT protocol reference: NiimBlueLib, https://github.com/MultiMote/niimbluelib
 Reference revision: 932be70 (MIT license). FoodLabel contains an independent Swift
 protocol implementation based on the documented packet formats and hardware checks.
+
+Default Sqids decoding is adapted from sqids-python (MIT license).
+Upstream source: https://github.com/sqids/sqids-python
+The full copyright notice and license are included in sqids-LICENSE.txt.

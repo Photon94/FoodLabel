@@ -1,6 +1,6 @@
 # FoodLabel
 
-Native offline Mac app for Xprinter XP-365B and NIIMBOT B21 Pro nutrition labels. Russian interface. Apple Silicon, macOS 15 or newer. No internet, account, Homebrew, or driver is required to run the packaged app.
+Native Mac app for Xprinter XP-365B and NIIMBOT B21 Pro nutrition labels. Russian interface. Apple Silicon, macOS 15 or newer. Local editing, storage and printing work offline. Importing shared recipes requires internet; no account, Homebrew, or driver is required to run the packaged app.
 
 ## Install
 
@@ -42,11 +42,21 @@ Review past jobs, their label images, copy counts, dates, and USB transfer resul
 4. Check the preview and date, choose 1–100 copies, then press **Напечатать этикетки**.
 5. **Сохранить блюдо** saves a reusable food. **История печати** retains each attempted job automatically, even when the food was not saved.
 
+### Import from «Худеем вместе»
+
+Paste the entire **Делюсь рецептом «…» из приложения…** message, or just its `https://hv.life/app-intent/shareUserRecipe?...` link, into **Ссылка на блюдо (QR)**. Both normal paste and **Вставить** extract the clean link and load the dish name and calories, protein, fat and carbs automatically. Escaped `https\://` links are accepted too.
+
+FoodLabel calculates nutrition per 100 g from the recipe's ingredients and finished weight, while preserving your label portion weight. The preview and portion totals update automatically. Imported values and the QR link are saved locally with the draft, saved dish and subsequent print jobs.
+
+A new import clears the previous dish's nutrition. If the link is unavailable or the service changes its format, use **Повторить загрузку** or enter the numbers manually. Editing the name or nutrition, removing the link, or opening another dish cancels a pending import. Nothing is printed automatically. Loading an already saved dish does not contact the service.
+
+This integration uses the sharing endpoint verified in Android app version 5.7.11. The service may change independently of FoodLabel. See [import format and calculation](docs/recipe-import.md).
+
 ### QR dish links
 
 Paste a dish link copied from another app into **Ссылка на блюдо (QR)**, or use **Вставить** to paste from the clipboard. FoodLabel adds a QR code on the right and keeps both nutrition rows and the barcode in a compact layout. Web URLs and app-specific deep links are supported. The receiving phone needs an app that supports the link.
 
-The link is saved with the food and each print snapshot. **Убрать QR** returns to the original layout. Older saved foods and print history remain readable. Long links that would make the QR too dense for the label are rejected; use the source app's shorter sharing link. FoodLabel never follows, truncates, or uploads the URL. See [QR layout details](docs/qr-links.md).
+The link is saved with the food and each print snapshot. **Убрать QR** returns to the original layout. Older saved foods and print history remain readable. Long links that would make the QR too dense for the label are rejected; use the source app's shorter sharing link. FoodLabel fetches recipe data only for recognized «Худеем вместе» recipe links; other URLs are used only in the QR code. It never truncates the URL. See [QR layout details](docs/qr-links.md).
 
 ![FoodLabel QR dish link field and compact nutrition label with both QR and barcode](docs/screenshots/qr-dish-link.jpg)
 

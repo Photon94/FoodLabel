@@ -8,6 +8,11 @@ import UniformTypeIdentifiers
             printerConnected=false; printerMessage="Проверка подключения…"
             Task { await checkPrinter() }
         }
+        if importingRecipe && !applyingRecipeChange &&
+            (draft.name != oldValue.name || draft.kcal != oldValue.kcal || draft.protein != oldValue.protein ||
+             draft.fat != oldValue.fat || draft.carbs != oldValue.carbs || draft.basis != oldValue.basis || draft.qrLink != oldValue.qrLink) {
+            cancelRecipeImport(message:"Загрузка отменена: данные изменены вручную.")
+        }
         scheduleRefresh()
     } }
     @Published var raster: LabelRaster?
@@ -27,11 +32,19 @@ import UniformTypeIdentifiers
     @Published var historyDateNotice = false
     @Published var startupError = ""
     private(set) var database: LabelDatabase?
+    @Published var importingRecipe = false
+    @Published var recipeImportMessage = ""
+    @Published var canRetryRecipe = false
+    private let recipeImporter: any RecipeImporting
+    private var recipeTask: Task<Void,Never>?
+    private var recipeGeneration = UUID()
+    private var applyingRecipeChange = false
     private let printer = PrinterService()
     private var refreshTask: Task<Void,Never>?
     let databaseURL: URL
-    var canPrint: Bool { raster != nil && validFood != nil && database != nil && !busy && !checking && startupError.isEmpty }
-    init() {
+    var canPrint: Bool { raster != nil && validFood != nil && database != nil && !busy && !checking && !importingRecipe && startupError.isEmpty }
+    init(recipeImporter: any RecipeImporting = HVRecipeImporter(), checkPrinterOnLaunch: Bool = true) {
+        self.recipeImporter=recipeImporter
         if let override=ProcessInfo.processInfo.environment["FOODLABEL_DATA_DIR"] {
             databaseURL=URL(fileURLWithPath:override).appendingPathComponent("foodlabel.sqlite")
         } else {
@@ -43,7 +56,51 @@ import UniformTypeIdentifiers
             if var restored=try db.loadDraft() { restored.useToday(); restored.copies="1"; draft=restored }
             try reload(); refresh()
         } catch { startupError=error.localizedDescription; errorMessage=startupError }
-        Task { await checkPrinter(autoSelect:true) }
+        if checkPrinterOnLaunch { Task { await checkPrinter(autoSelect:true) } }
+    }
+    private func cancelRecipeImport(message: String = "") {
+        recipeGeneration=UUID(); recipeTask?.cancel(); recipeTask=nil
+        importingRecipe=false; recipeImportMessage=message
+        canRetryRecipe = !message.isEmpty && (try? SharedRecipeLink.parse(draft.qrLink ?? "").reference) != nil
+    }
+    func retryRecipeImport() { setRecipeLink(draft.qrLink ?? "", force:true) }
+    func setRecipeLink(_ input: String, force: Bool = false) {
+        guard force || input != (draft.qrLink ?? "") else { return }
+        cancelRecipeImport()
+        do {
+            let parsed=try SharedRecipeLink.parse(input)
+            var next=draft; next.qrLink=parsed.link.isEmpty ? nil : parsed.link
+            guard let reference=parsed.reference else { draft=next; return }
+            // A different recipe must never inherit printable nutrition from the previous dish.
+            next.name=parsed.title ?? ""; next.kcal=""; next.protein=""; next.fat=""; next.carbs=""; next.basis = .per100
+            selectedFood=nil; historyDateNotice=false
+            draft=next
+            importingRecipe=true; recipeImportMessage="Загрузка названия и КБЖУ…"
+            let generation=recipeGeneration, importer=recipeImporter
+            recipeTask=Task { [weak self] in
+                do {
+                    try await Task.sleep(nanoseconds:450_000_000)
+                    let recipe=try await importer.fetch(reference)
+                    try Task.checkCancellation()
+                    guard let self, self.recipeGeneration == generation else { return }
+                    var result=self.draft
+                    result.name=recipe.name; result.basis = .per100
+                    result.kcal=ImportedRecipe.editable(recipe.per100.kcal); result.protein=ImportedRecipe.editable(recipe.per100.protein)
+                    result.fat=ImportedRecipe.editable(recipe.per100.fat); result.carbs=ImportedRecipe.editable(recipe.per100.carbs)
+                    self.applyingRecipeChange=true; self.draft=result; self.applyingRecipeChange=false
+                    self.importingRecipe=false; self.recipeTask=nil; self.canRetryRecipe=false
+                    self.recipeImportMessage="Название и КБЖУ на 100 г загружены. Вес вашей порции сохранён."
+                    self.refresh()
+                } catch {
+                    guard !Task.isCancelled, let self, self.recipeGeneration == generation else { return }
+                    self.importingRecipe=false; self.recipeTask=nil; self.canRetryRecipe=true
+                    self.recipeImportMessage = error is FoodError ? error.localizedDescription : "Не удалось загрузить рецепт. Проверьте интернет и повторите или заполните КБЖУ вручную."
+                }
+            }
+        } catch {
+            draft.qrLink=input.isEmpty ? nil : input
+            recipeImportMessage=error.localizedDescription
+        }
     }
     private func scheduleRefresh() {
         raster=nil; validFood=nil; validation="Обновление предпросмотра…"
@@ -53,8 +110,14 @@ import UniformTypeIdentifiers
             guard !Task.isCancelled else { return }; self?.refresh()
         }
     }
+    private func validatedDraft() throws -> ValidFood {
+        // Revalidate on restore and save as well as paste: malformed recipe links must
+        // never fall back to ordinary QR validation beside unrelated nutrition.
+        _=try SharedRecipeLink.parse(draft.qrLink ?? "")
+        return try draft.validated()
+    }
     func refresh() {
-        do { let value=try draft.validated(); raster=try LabelRenderer.render(value,profile:draft.selectedPrinter); validFood=value; validation="" }
+        do { let value=try validatedDraft(); raster=try LabelRenderer.render(value,profile:draft.selectedPrinter); validFood=value; validation="" }
         catch { raster=nil; validFood=nil; validation=error.localizedDescription }
         if let database {
             do { try database.saveDraft(draft) }
@@ -67,6 +130,7 @@ import UniformTypeIdentifiers
         catch { errorMessage=error.localizedDescription }
     }
     func newFood() {
+        cancelRecipeImport()
         do {
             guard let database else { return }
             var next=FoodDraft(); next.printerProfile=draft.selectedPrinter; next.barcode=try database.nextBarcode()
@@ -74,15 +138,17 @@ import UniformTypeIdentifiers
         } catch { errorMessage=error.localizedDescription }
     }
     func load(_ food: SavedFood) {
+        cancelRecipeImport()
         var next=food.draft; next.printerProfile=draft.selectedPrinter; next.useToday(); next.copies="1"
         selectedFood=food.id; historyDateNotice=false; draft=next; section="editor"; notice=""; refresh()
     }
     func loadHistory(_ record: PrintRecord) {
+        cancelRecipeImport()
         selectedFood=nil; draft=record.draft; draft.copies="1"; historyDateNotice=true; section="editor"; notice=""; refresh()
     }
     func saveFood(asNew: Bool = false) {
         do {
-            guard let database else { return }; _=try draft.validated()
+            guard let database else { return }; _=try validatedDraft()
             selectedFood=try database.saveFood(id:asNew ? nil : selectedFood,draft:draft)
             try reload(); notice="Блюдо сохранено на этом Mac."
         } catch { errorMessage=error.localizedDescription }
